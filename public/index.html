@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Waveform Visualizer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Audio Waveform Visualizer</h1>
+        
+        <!-- Device Selection -->
+        <div class="controls">
+            <div class="device-selector">
+                <label for="microphoneSelect">Microphone:</label>
+                <select id="microphoneSelect">
+                    <option value="">Select Microphone</option>
+                </select>
+            </div>
+            
+            <div class="device-selector">
+                <label for="speakerSelect">Audio Output:</label>
+                <select id="speakerSelect">
+                    <option value="">Select Speaker</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Audio Controls -->
+        <div class="audio-controls">
+            <button id="startRecording">Start Recording</button>
+            <button id="stopRecording" disabled>Stop Recording</button>
+            <button id="playTone">Play Test Tone</button>
+            <button id="stopTone" disabled>Stop Tone</button>
+        </div>
+
+        <!-- Waveform Canvas -->
+        <div class="canvas-container">
+            <h3>Microphone Input Waveform</h3>
+            <canvas id="waveformCanvas" width="800" height="200"></canvas>
+        </div>
+
+        <!-- Generated Waveform Canvas -->
+        <div class="canvas-container">
+            <h3>Generated Audio Waveform</h3>
+            <canvas id="outputCanvas" width="800" height="200"></canvas>
+        </div>
+
+        <!-- Volume Controls -->
+        <div class="volume-controls">
+            <div class="volume-control">
+                <label for="micVolume">Microphone Sensitivity:</label>
+                <input type="range" id="micVolume" min="0" max="100" value="50">
+                <span id="micVolumeValue">50</span>
+            </div>
+            
+            <div class="volume-control">
+                <label for="outputVolume">Output Volume:</label>
+                <input type="range" id="outputVolume" min="0" max="100" value="30">
+                <span id="outputVolumeValue">30</span>
+            </div>
+        </div>
+
+        <!-- Frequency Control -->
+        <div class="frequency-control">
+            <label for="frequency">Tone Frequency (Hz):</label>
+            <input type="range" id="frequency" min="100" max="2000" value="440">
+            <span id="frequencyValue">440</span> Hz
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
