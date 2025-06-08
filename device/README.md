@@ -5,10 +5,14 @@ Turn your Ubuntu laptop into a Bluetooth A2DP speaker that can receive audio fro
 ## Features
 
 - Simple two-program setup
+- Manual operation only (no background services)
+- **Complete cleanup when programs exit** - Bluetooth speaker mode fully disabled
 - Automatic pairing mode
 - Audio routing from Bluetooth to laptop speakers
 - No PIN/code required
 - Clean, easy-to-use interface
+- Programs only run when you need them
+- **No persistent audio routing** - stops cleanly when you exit
 
 ## Installation
 
@@ -49,6 +53,14 @@ Use this to receive audio from devices that are already paired.
 1. Run `./bluetooth_player.py`
 2. Your phone will automatically connect if it's nearby
 3. Start playing music - audio plays through laptop speakers!
+4. **Press Ctrl+C to stop** - Bluetooth speaker mode is completely disabled
+
+## Important Notes
+
+- **Clean Exit**: Always use **Ctrl+C** to stop the programs properly
+- **Complete Cleanup**: When programs exit, all Bluetooth audio routing stops
+- **No Background Services**: The laptop only acts as a Bluetooth speaker while programs are running
+- **Fresh Start**: Each time you run the programs, they set up a clean Bluetooth speaker environment
 
 ## Troubleshooting
 
@@ -123,20 +135,14 @@ Edit `config.ini` to customize:
 
 ## Security Notes
 
-- The service accepts pairing requests automatically
+- The pairing program accepts pairing requests automatically when running
+- Programs only run when you manually start them (no background services)
 - Consider changing the pairing PIN in config.ini for better security
-- The service runs with user privileges, not root
+- The programs run with user privileges, not root
 
 ## Uninstallation
 
 ```bash
-# Stop and disable service
-sudo systemctl stop bluetooth-speaker
-sudo systemctl disable bluetooth-speaker
-
-# Remove service file
-sudo rm /etc/systemd/system/bluetooth-speaker.service
-
 # Remove from bluetooth group
 sudo gpasswd -d $USER bluetooth
 

@@ -139,10 +139,90 @@ quit
                 self.log(f"Monitoring error: {e}")
                 time.sleep(5)
     
+    def cleanup_bluetooth(self):
+        """Clean up Bluetooth pairing mode, audio routes, and disable pairing/discoverable mode"""
+        self.log("🧹 Cleaning up Bluetooth pairing mode and audio routes...")
+        
+        try:
+            # Stop all audio applications first
+            self.log("🎵 Stopping audio applications...")
+            self.run_command("pkill -f pulseaudio", timeout=5)
+            self.run_command("pkill -f pipewire", timeout=5)
+            time.sleep(1)
+            
+            # Clean up audio system
+            self.log("🔊 Cleaning up audio system...")
+            
+            # Remove Bluetooth audio modules from PulseAudio
+            audio_cleanup_commands = [
+                "pactl unload-module module-bluetooth-discover",
+                "pactl unload-module module-bluetooth-policy", 
+                "pactl unload-module module-bluez5-discover",
+                "pactl unload-module module-bluez5-device",
+            ]
+            
+            for cmd in audio_cleanup_commands:
+                self.run_command(cmd, timeout=5)
+            
+            # Reset audio to default state
+            self.run_command("pactl set-default-sink @DEFAULT_SINK@", timeout=5)
+            
+            # Restart audio system to clean state
+            self.log("🔄 Restarting audio system...")
+            self.run_command("systemctl --user restart pulseaudio", timeout=10)
+            time.sleep(2)
+            
+            # Disable pairing and discoverable mode
+            bt_cleanup = """
+discoverable off
+pairable off
+quit
+"""
+            
+            process = subprocess.Popen(['bluetoothctl'], 
+                                     stdin=subprocess.PIPE, 
+                                     stdout=subprocess.PIPE, 
+                                     stderr=subprocess.PIPE,
+                                     text=True)
+            
+            try:
+                process.communicate(input=bt_cleanup, timeout=10)
+                self.log("✅ Pairing mode disabled")
+            except subprocess.TimeoutExpired:
+                process.kill()
+                self.log("⚠️  Cleanup timeout, but likely succeeded")
+            
+            # Power cycle Bluetooth to ensure clean state
+            self.log("🔄 Power cycling Bluetooth...")
+            bt_power_cycle = """
+power off
+power on
+quit
+"""
+            
+            process = subprocess.Popen(['bluetoothctl'], 
+                                     stdin=subprocess.PIPE, 
+                                     stdout=subprocess.PIPE, 
+                                     stderr=subprocess.PIPE,
+                                     text=True)
+            
+            try:
+                process.communicate(input=bt_power_cycle, timeout=10)
+                self.log("✅ Bluetooth power cycled")
+            except subprocess.TimeoutExpired:
+                process.kill()
+                self.log("⚠️  Power cycle timeout")
+            
+            self.log("✅ Complete cleanup finished - Bluetooth speaker mode disabled")
+                
+        except Exception as e:
+            self.log(f"Cleanup error: {e}")
+
     def signal_handler(self, signum, frame):
         """Handle Ctrl+C gracefully"""
         self.log("🛑 Stopping pairing mode...")
         self.running = False
+        self.cleanup_bluetooth()
         sys.exit(0)
     
     def run(self):
@@ -184,10 +264,19 @@ quit
         print("=" * 50)
         
         # Monitor for pairing
-        self.monitor_pairing()
+        try:
+            self.monitor_pairing()
+        finally:
+            # Always cleanup when exiting
+            self.cleanup_bluetooth()
         
         return True
 
 if __name__ == "__main__":
     pairing = BluetoothPairing()
-    pairing.run()
+    try:
+        pairing.run()
+    except Exception as e:
+        pairing.log(f"Error: {e}")
+    finally:
+        pairing.cleanup_bluetooth()

@@ -186,10 +186,102 @@ quit
                 self.log(f"Monitoring error: {e}")
                 time.sleep(5)
     
+    def cleanup_bluetooth(self):
+        """Clean up Bluetooth connections, audio routes, and disable discoverable mode"""
+        self.log("🧹 Cleaning up Bluetooth connections and audio routes...")
+        
+        try:
+            # Stop all audio applications first
+            self.log("🎵 Stopping audio applications...")
+            self.run_command("pkill -f pulseaudio", timeout=5)
+            self.run_command("pkill -f pipewire", timeout=5)
+            time.sleep(1)
+            
+            # Get currently connected devices and disconnect them
+            success, output, _ = self.run_command("bluetoothctl devices Connected")
+            if success and output.strip():
+                for line in output.strip().split('\n'):
+                    if line.strip() and 'Device' in line:
+                        parts = line.split(' ', 2)
+                        if len(parts) >= 3:
+                            mac = parts[1]
+                            name = parts[2]
+                            self.log(f"Disconnecting {name}...")
+                            self.run_command(f"echo 'disconnect {mac}' | bluetoothctl")
+            
+            # Clean up audio system
+            self.log("🔊 Cleaning up audio system...")
+            
+            # Remove Bluetooth audio modules from PulseAudio
+            audio_cleanup_commands = [
+                "pactl unload-module module-bluetooth-discover",
+                "pactl unload-module module-bluetooth-policy", 
+                "pactl unload-module module-bluez5-discover",
+                "pactl unload-module module-bluez5-device",
+            ]
+            
+            for cmd in audio_cleanup_commands:
+                self.run_command(cmd, timeout=5)
+            
+            # Reset audio to default state
+            self.run_command("pactl set-default-sink @DEFAULT_SINK@", timeout=5)
+            
+            # Restart audio system to clean state
+            self.log("🔄 Restarting audio system...")
+            self.run_command("systemctl --user restart pulseaudio", timeout=10)
+            time.sleep(2)
+            
+            # Reset Bluetooth to non-discoverable state
+            bt_cleanup = """
+discoverable off
+pairable off
+quit
+"""
+            
+            process = subprocess.Popen(['bluetoothctl'], 
+                                     stdin=subprocess.PIPE, 
+                                     stdout=subprocess.PIPE, 
+                                     stderr=subprocess.PIPE,
+                                     text=True)
+            
+            try:
+                process.communicate(input=bt_cleanup, timeout=10)
+                self.log("✅ Bluetooth cleaned up")
+            except subprocess.TimeoutExpired:
+                process.kill()
+                self.log("⚠️  Cleanup timeout, but likely succeeded")
+                
+            # Power cycle Bluetooth to ensure clean state
+            self.log("🔄 Power cycling Bluetooth...")
+            bt_power_cycle = """
+power off
+power on
+quit
+"""
+            
+            process = subprocess.Popen(['bluetoothctl'], 
+                                     stdin=subprocess.PIPE, 
+                                     stdout=subprocess.PIPE, 
+                                     stderr=subprocess.PIPE,
+                                     text=True)
+            
+            try:
+                process.communicate(input=bt_power_cycle, timeout=10)
+                self.log("✅ Bluetooth power cycled")
+            except subprocess.TimeoutExpired:
+                process.kill()
+                self.log("⚠️  Power cycle timeout")
+            
+            self.log("✅ Complete cleanup finished - Bluetooth speaker mode disabled")
+                
+        except Exception as e:
+            self.log(f"Cleanup error: {e}")
+
     def signal_handler(self, signum, frame):
         """Handle Ctrl+C gracefully"""
         self.log("🛑 Stopping audio player...")
         self.running = False
+        self.cleanup_bluetooth()
         sys.exit(0)
     
     def run(self):
@@ -243,4 +335,10 @@ quit
 
 if __name__ == "__main__":
     player = BluetoothPlayer()
-    player.run()
+    try:
+        player.run()
+    except Exception as e:
+        player.log(f"Error: {e}")
+    finally:
+        # Ensure cleanup always happens
+        player.cleanup_bluetooth()
